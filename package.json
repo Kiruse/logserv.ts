@@ -12,6 +12,7 @@
     "./ts/client": "./src/client.ts"
   },
   "scripts": {
+    "prepack": "tsc",
     "test": "bun test"
   },
   "repository": {
