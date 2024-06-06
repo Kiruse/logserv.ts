@@ -6,9 +6,53 @@ The goal of this simple server is to allow collecting logs from multiple sources
 ## Features
 - [x] Logging ingress & egress
 - [ ] REST endpoints for querying
-- [ ] Configurable persistence time frame
+- [ ] Configurable persistence (?)
 - [ ] Log to `/var/log/logserv.log` to integrate with logrotate
-- [ ] Configure & observe specific `/var/log` files
+- [x] Configure & observe specific `/var/log` files
+
+# Usage
+*logserv* consists of 3 components:
+
+- **LogServer**, which accepts and repeats logs
+- **LogClient** as Producer, which sends logs on a specific channel
+- **LogClient** as Consumer, which consumes logs on a specific channel or the wildcard channel
+
+All of these components must be incorporated into your scripts, for example:
+
+```typescript
+// server
+import { LogServer } from '@kiruse/logserv/server';
+LogServer.fromEnv();
+```
+
+`LogServer.fromEnv()` does a few things:
+- Loads port from `LOGSERVER_PORT` or `PORT`, or uses the default port of `7031`
+- Loads TLS certificate & key from `LOGSERVER_CERT_PATH` and `LOGSERVER_KEY_PATH`, respectively
+- Creates an https server if both are present, otherwise an http server, and
+- Automatically & immediately starts listening.
+
+If you need to deviate from these default configurations you can simply create a `new LogServer` which takes an http or https server.
+
+```typescript
+// producer
+import { LogClient } from '@kiruse/logserv/client';
+const logger = LogClient.connect('some-producer', 'localhost', 7031);
+logger.info('Hello, world!');
+```
+
+This instantiates a socket.io connection and tries to connect to the server. `logger.info('Hello, world!')` will be logged to your local console as well as sent to the server (non-blocking) if the connection is available. The server will then forward it to all subscribed listeners. The server & consumers will also log the messages to their console.
+
+```typescript
+// consumer
+import { LogClient } from '@kiruse/logserv/client';
+const logger = LogClient.connect('consumer', 'localhost', 7031);
+logger.listen('some-producer'); // OR
+logger.listen('*');
+```
+
+This connects to the LogServer and subscribes to logs from `some-producer` or all logs. Note that currently, the client would receive `some-producer`'s logs doubly when subscribed to both the specific channel as well as the wildcard channel.
+
+Obviously, the `LogClient` can be used for both sending logs & receiving logs, but typically you will likely only want to do one of both.
 
 # License
 Licensed under Apache 2.0
