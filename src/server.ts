@@ -20,6 +20,17 @@ export class LogServer {
 
   constructor(public readonly _httpServer: http.Server | https.Server, public marshal = defaultMarshaller.marshal) {
     this.#socket = new Server(_httpServer);
+    this.#socket.use(async (socket, next) => {
+      try {
+        if (!socket.handshake.auth.channel || !await this.isAuthorized(socket)) {
+          this.#log('logserv', LogSeverity.Trace, new Date(), `Client ${getSocketId(socket)} unauthorized`);
+          next(new Error('Unauthorized'));
+        }
+      } catch (err) {
+        this.#log('logserv', LogSeverity.Error, new Date(), `Error during authentication of client ${getSocketId(socket)}:`, err);
+        next(new Error('Internal server error'));
+      }
+    });
     this.#socket.on('connection', this.#onConnect);
   }
 
@@ -32,11 +43,6 @@ export class LogServer {
 
   #onConnect = (socket: Socket) => {
     const { channel } = socket.handshake.auth;
-    if (!channel || !this.isAuthorized(socket)) {
-      this.#log('logserv', LogSeverity.Trace, new Date(), `Client ${getSocketId(socket)} unauthorized`);
-      socket.disconnect(true);
-      return;
-    }
     this.#log('logserv', LogSeverity.Info, new Date(), `Client ${getSocketId(socket)} connected`);
 
     socket.on('disconnect', () => {
