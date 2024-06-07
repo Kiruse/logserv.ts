@@ -37,7 +37,7 @@ export class LogServer {
   /** Callback to check whether a client is authorized to access this server. Default implementation
    * always returns true. See https://socket.io/docs/v4/client-options/#auth for more information.
    */
-  isAuthorized(socket: Socket) {
+  isAuthorized(socket: Socket): boolean | Promise<boolean> {
     return true;
   }
 
