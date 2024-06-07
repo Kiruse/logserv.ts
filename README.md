@@ -37,7 +37,7 @@ If you need to deviate from these default configurations you can simply create a
 ```typescript
 // producer
 import { LogClient } from '@kiruse/logserv/client';
-const logger = LogClient.connect('some-producer', 'localhost:7031');
+const logger = LogClient.connect('some-producer', 'ws://localhost:7031');
 logger.info('Hello, world!');
 ```
 
@@ -46,7 +46,7 @@ This instantiates a socket.io connection and tries to connect to the server. `lo
 ```typescript
 // consumer
 import { LogClient } from '@kiruse/logserv/client';
-const logger = LogClient.connect('consumer', 'localhost:7031');
+const logger = LogClient.connect('consumer', 'ws://localhost:7031');
 logger.listen('some-producer'); // OR
 logger.listen('*');
 ```
@@ -55,14 +55,16 @@ This connects to the LogServer and subscribes to logs from `some-producer` or al
 
 Obviously, the `LogClient` can be used for both sending logs & receiving logs, but typically you will likely only want to do one of both.
 
+## Custom Client Socket
+You may also create a `new LogClient(channel, socket)` with a socket.io socket you construct & provide yourself. When doing so, be sure to pass in the `channel` to the `auth` socket option. The server requires this to enforce clients may only send logs on their authorized channels. Without this property present on the handshake authentication payload, the server will always silently close the connection.
+
 ## Authentication
 The `LogServer` currently supports a simple per-connection authentication hook. This method receives the socket.io `Socket`, meaning [socket.io authentication](https://socket.io/docs/v4/client-options/#auth) logic applies:
 
 ```typescript
 // client
 import { LogClient } from '@kiruse/logserv/client';
-const logger = LogClient.connect('some-client', {
-  host: 'localhost',
+const logger = LogClient.connect('some-client', 'ws://localhost:7031', {
   auth: {
     token: 'foobar',
   },

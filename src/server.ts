@@ -4,7 +4,7 @@ import * as http from 'http';
 import * as https from 'https';
 import { Server, Socket as SocketBase } from 'socket.io';
 import * as YAML from 'yaml';
-import { ClientEvents, ServerEvents } from './types.js';
+import { ClientEvents, LogSeverity, ServerEvents } from './types.js';
 import { DEFAULT_LOGSERVER_PORT, getLogPrefix, getTimestamp } from './util.js';
 
 export type Socket = SocketBase<ClientEvents, ServerEvents>;
@@ -31,23 +31,35 @@ export class LogServer {
   }
 
   #onConnect = (socket: Socket) => {
-    if (!this.isAuthorized(socket)) return;
+    const { channel } = socket.handshake.auth;
+    if (!channel || !this.isAuthorized(socket)) {
+      this.#log('logserv', LogSeverity.Trace, new Date(), `Client ${getSocketId(socket)} unauthorized`);
+      socket.disconnect(true);
+      return;
+    }
+    this.#log('logserv', LogSeverity.Info, new Date(), `Client ${getSocketId(socket)} connected`);
 
-    socket.on('log', (channel: string, severity: number, timestamp: string, ...messages: any[]) => {
-      const date = new Date(timestamp);
-      console.log(getLogPrefix(severity, channel, date), ...messages);
-      socket.to(`logs/${channel}`).emit('push', channel, severity, timestamp, ...messages);
-      socket.to(`logs/*`).emit('push', channel, severity, timestamp, ...messages);
-      this.#logToFile(channel, severity, date, ...messages);
+    socket.on('disconnect', () => {
+      this.#log('logserv', LogSeverity.Info, new Date(), `Client ${getSocketId(socket)} disconnected`);
+    });
+    socket.on('log', (severity: number, timestamp: string, ...messages: any[]) => {
+      this.#log(channel, severity, new Date(timestamp), ...messages);
     });
     socket.on('sub', (channel: string) => {
-      console.info(`Client ${socket.id} subscribed to logs/${channel}`);
+      console.info(`Client ${getSocketId(socket)} subscribed to logs/${channel}`);
       socket.join(`logs/${channel}`);
     });
     socket.on('unsub', (channel: string) => {
-      console.info(`Client ${socket.id} unsubscribed from logs/${channel}`);
+      console.info(`Client ${getSocketId(socket)} unsubscribed from logs/${channel}`);
       socket.leave(`logs/${channel}`);
     });
+  }
+
+  #log = (channel: string, severity: number, timestamp: Date, ...messages: any[]) => {
+    console.log(getLogPrefix(severity, channel, timestamp), ...messages);
+    this.#socket.to(`logs/${channel}`).emit('push', channel, severity, timestamp.toISOString(), ...messages);
+    this.#socket.to(`logs/*`).emit('push', channel, severity, timestamp.toISOString(), ...messages);
+    this.#logToFile(channel, severity, timestamp, ...messages);
   }
 
   #logToFile = (channel: string, severity: number, timestamp: Date, ...messages: any[]) => {
@@ -80,6 +92,7 @@ export class LogServer {
       server.listen(port, () => {
         resolve();
         server.off('error', onError);
+        console.log(`LogServer listening on port ${port}`);
       });
     });
     return new LogServer(server);
@@ -87,3 +100,10 @@ export class LogServer {
 }
 
 var warnedMissingLogFolder = false;
+
+function getSocketId(socket: Socket) {
+  const { channel } = socket.handshake.auth;
+  return channel
+    ? `${channel}/${socket.id}`
+    : socket.id;
+}

@@ -16,7 +16,7 @@ export class LogClient {
 
   #log = (severity: LogSeverity, ...messages: any[]) => {
     console.log(getLogPrefix(severity), ...messages);
-    this.#socket.emit('log', this.channel, severity, new Date().toISOString(), ...messages);
+    this.#socket.emit('log', severity, new Date().toISOString(), ...messages);
   }
 
   trace = (...messages: any[]) => this.#log(LogSeverity.Trace, ...messages);
@@ -30,14 +30,15 @@ export class LogClient {
   }
 
   static connect(channel: string, url: string, opts?: SocketOptions): LogClient;
+  static connect(channel: string, opts: SocketOptions): LogClient;
   static connect(channel: string, ...args: any[]) {
     let socket: Socket;
     if (typeof args[0] === 'string') {
       const [url, opts] = args;
-      socket = io(url, opts);
+      socket = io(url, { ...opts, auth: { channel, ...opts?.auth } });
     } else {
       const [opts] = args;
-      socket = io({ port: DEFAULT_LOGSERVER_PORT, ...opts });
+      socket = io({ port: DEFAULT_LOGSERVER_PORT, ...opts, auth: { channel, ...opts?.auth } });
     }
     socket.on('connect_error', (err) => {
       console.error('Failed to connect to log server:', err);

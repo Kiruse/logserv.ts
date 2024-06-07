@@ -13,7 +13,7 @@ export interface ServerEvents {
 
 /** Events triggered by the client. Clients listen to `ServerEvents`. */
 export interface ClientEvents {
-  log(channel: string, severity: LogSeverity, timestamp: string, ...messages: any[]): void;
+  log(severity: LogSeverity, timestamp: string, ...messages: any[]): void;
   sub(channel: string): void;
   unsub(channel: string): void;
 }
