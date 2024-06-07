@@ -9,6 +9,7 @@ The goal of this simple server is to allow collecting logs from multiple sources
 - [ ] Configurable persistence (?)
 - [ ] Log to `/var/log/logserv.log` to integrate with logrotate
 - [x] Configure & observe specific `/var/log` files
+- [x] Authentication hook
 
 # Usage
 *logserv* consists of 3 components:
@@ -36,7 +37,7 @@ If you need to deviate from these default configurations you can simply create a
 ```typescript
 // producer
 import { LogClient } from '@kiruse/logserv/client';
-const logger = LogClient.connect('some-producer', 'localhost', 7031);
+const logger = LogClient.connect('some-producer', 'localhost:7031');
 logger.info('Hello, world!');
 ```
 
@@ -45,7 +46,7 @@ This instantiates a socket.io connection and tries to connect to the server. `lo
 ```typescript
 // consumer
 import { LogClient } from '@kiruse/logserv/client';
-const logger = LogClient.connect('consumer', 'localhost', 7031);
+const logger = LogClient.connect('consumer', 'localhost:7031');
 logger.listen('some-producer'); // OR
 logger.listen('*');
 ```
@@ -53,6 +54,30 @@ logger.listen('*');
 This connects to the LogServer and subscribes to logs from `some-producer` or all logs. Note that currently, the client would receive `some-producer`'s logs doubly when subscribed to both the specific channel as well as the wildcard channel.
 
 Obviously, the `LogClient` can be used for both sending logs & receiving logs, but typically you will likely only want to do one of both.
+
+## Authentication
+The `LogServer` currently supports a simple per-connection authentication hook. This method receives the socket.io `Socket`, meaning [socket.io authentication](https://socket.io/docs/v4/client-options/#auth) logic applies:
+
+```typescript
+// client
+import { LogClient } from '@kiruse/logserv/client';
+const logger = LogClient.connect('some-client', {
+  host: 'localhost',
+  auth: {
+    token: 'foobar',
+  },
+});
+```
+
+```typescript
+import { LogServer, Socket } from '@kiruse/logserv/server';
+const server = LogServer.fromEnv();
+server.isAuthorized = (socket: Socket) => {
+  // do something with the token, e.g. look it up in a database or verify it as a JWT
+  // the exact implementation is up to you
+  socket.handshake.auth.token
+};
+```
 
 # License
 Licensed under Apache 2.0

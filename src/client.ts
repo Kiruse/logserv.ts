@@ -1,4 +1,4 @@
-import { Socket as SocketBase, io } from 'socket.io-client';
+import { Socket as SocketBase, type SocketOptions, io } from 'socket.io-client';
 import { ClientEvents, LogSeverity, ServerEvents } from './types.js';
 import { DEFAULT_LOGSERVER_PORT, getLogPrefix } from './util.js';
 
@@ -29,8 +29,16 @@ export class LogClient {
     this.#socket.emit('sub', channel);
   }
 
-  static connect(channel: string, host: string, port = DEFAULT_LOGSERVER_PORT) {
-    const socket = io(`http://${host}:${port}`);
+  static connect(channel: string, url: string, opts?: SocketOptions): LogClient;
+  static connect(channel: string, ...args: any[]) {
+    let socket: Socket;
+    if (typeof args[0] === 'string') {
+      const [url, opts] = args;
+      socket = io(url, opts);
+    } else {
+      const [opts] = args;
+      socket = io({ port: DEFAULT_LOGSERVER_PORT, ...opts });
+    }
     socket.on('connect_error', (err) => {
       console.error('Failed to connect to log server:', err);
     });
