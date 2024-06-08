@@ -6,12 +6,18 @@ export type Socket = SocketBase<ServerEvents, ClientEvents>;
 
 export class LogClient {
   #socket: Socket;
+  #channels = new Set<string>();
 
   constructor(public readonly channel: string, socket: Socket) {
     this.#socket = socket;
+    this.#socket.on('connect', this.#onConnect);
     this.#socket.on('push', (channel, severity, timestamp, ...messages) => {
       console.log(getLogPrefix(severity, channel, new Date(timestamp)), ...messages);
     });
+  }
+
+  #onConnect = () => {
+    this.#channels.forEach(ch => this.#socket.emit('sub', ch));
   }
 
   #log = (severity: LogSeverity, ...messages: any[]) => {
@@ -26,7 +32,9 @@ export class LogClient {
   error = (...messages: any[]) => this.#log(LogSeverity.Error, ...messages);
 
   listen(channel = '*') {
-    this.#socket.emit('sub', channel);
+    if (this.#socket.connected)
+      this.#socket.emit('sub', channel);
+    this.#channels.add(channel);
   }
 
   static connect(channel: string, url: string, opts?: SocketOptions): LogClient;
