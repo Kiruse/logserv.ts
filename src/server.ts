@@ -26,6 +26,7 @@ export class LogServer {
           this.#log('logserv', LogSeverity.Trace, new Date(), `Client ${getSocketId(socket)} unauthorized`);
           next(new Error('Unauthorized'));
         }
+        next();
       } catch (err) {
         this.#log('logserv', LogSeverity.Error, new Date(), `Error during authentication of client ${getSocketId(socket)}:`, err);
         next(new Error('Internal server error'));
