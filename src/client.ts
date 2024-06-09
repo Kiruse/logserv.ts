@@ -7,6 +7,7 @@ export type Socket = SocketBase<ServerEvents, ClientEvents>;
 export class LogClient {
   #socket: Socket;
   #channels = new Set<string>();
+  #syncListeners: (() => void)[] = [];
 
   constructor(public readonly channel: string, socket: Socket) {
     this.#socket = socket;
@@ -17,6 +18,7 @@ export class LogClient {
   }
 
   #onConnect = () => {
+    this.#syncListeners.forEach(listener => listener());
     this.#channels.forEach(ch => this.#socket.emit('sub', ch));
   }
 
@@ -35,6 +37,13 @@ export class LogClient {
     if (this.#socket.connected)
       this.#socket.emit('sub', channel);
     this.#channels.add(channel);
+  }
+
+  sync() {
+    if (this.#socket.connected) return Promise.resolve();
+    return new Promise<void>(resolve => {
+      this.#syncListeners.push(resolve);
+    });
   }
 
   static connect(channel: string, url: string, opts?: SocketOptions): LogClient;
