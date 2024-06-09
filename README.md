@@ -10,6 +10,7 @@ The goal of this simple server is to allow collecting logs from multiple sources
 - [ ] Log to `/var/log/logserv.log` to integrate with logrotate
 - [x] Configure & observe specific `/var/log` files
 - [x] Authentication hook
+- [ ] Logging egress backlog in case of connection loss
 
 # Usage
 *logserv* consists of 3 components:
