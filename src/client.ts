@@ -1,6 +1,7 @@
 import { Socket as SocketBase, type SocketOptions, io } from 'socket.io-client';
 import { ClientEvents, LogSeverity, ServerEvents } from './types.js';
-import { DEFAULT_LOGSERVER_PORT, getLogPrefix } from './util.js';
+import { DEFAULT_LOGSERVER_PORT, SeverityTags, getTimestamp } from './util.js';
+import chalk from 'chalk';
 
 export type Socket = SocketBase<ServerEvents, ClientEvents>;
 
@@ -63,3 +64,24 @@ export class LogClient {
     return new LogClient(channel, socket);
   }
 }
+
+export function getLogPrefix(severity: LogSeverity, extra = '', timestamp = new Date(), colorize = true) {
+  const tag = SeverityTags[severity] ?? 'INFO';
+  const text = extra
+    ? `[${getTimestamp(timestamp)} ${extra}/${tag}]`
+    : `[${getTimestamp(timestamp)} ${tag}]`;
+  if (colorize) {
+    const color = SeverityColors[severity] ?? '#FFFFFF';
+    return chalk.hex(color)(text);
+  } else {
+    return text;
+  }
+}
+
+export const SeverityColors: Record<LogSeverity, string> = {
+  [LogSeverity.Trace]: '#6A04E8',
+  [LogSeverity.Debug]: '#6A04E8',
+  [LogSeverity.Info]: '#FFFFFF',
+  [LogSeverity.Warn]: '#FFD000',
+  [LogSeverity.Error]: '#FF0000',
+};

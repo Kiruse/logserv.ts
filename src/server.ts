@@ -5,7 +5,8 @@ import * as https from 'https';
 import { Server, Socket as SocketBase } from 'socket.io';
 import * as YAML from 'yaml';
 import { ClientEvents, LogSeverity, ServerEvents } from './types.js';
-import { DEFAULT_LOGSERVER_PORT, getLogPrefix, getTimestamp } from './util.js';
+import { DEFAULT_LOGSERVER_PORT, SeverityTags, getTimestamp } from './util.js';
+import chalk from 'chalk';
 
 export type Socket = SocketBase<ClientEvents, ServerEvents>;
 
@@ -113,4 +114,22 @@ function getSocketId(socket: Socket) {
   return channel
     ? `${channel}/${socket.id}`
     : socket.id;
+}
+
+export function getLogPrefix(severity: LogSeverity, extra = '', timestamp = new Date(), colorize = true) {
+  const tag = SeverityTags[severity] ?? 'INFO';
+  const text = extra
+  ? `[${getTimestamp(timestamp)} ${extra}/${tag}]`
+  : `[${getTimestamp(timestamp)} ${tag}]`;
+  if (colorize) {
+    const color = getClientColor(extra);
+    return chalk.hex(color)(text);
+  } else {
+    return text;
+  }
+}
+
+function getClientColor(client: string) {
+  const hash = client.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return '#' + (hash % 0xFFFFFF).toString(16).padStart(6, '0');
 }
