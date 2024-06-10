@@ -58,7 +58,11 @@ export class LogClient {
       socket = io({ port: DEFAULT_LOGSERVER_PORT, ...opts, auth: { channel, ...opts?.auth } });
     }
     socket.on('connect_error', (err) => {
-      console.error('Failed to connect to log server:', err);
+      if (err.message === 'timeout') {
+        console.error(getClientLogPrefix(LogSeverity.Error), 'Connection to log server timed out');
+        return;
+      }
+      console.error(getClientLogPrefix(LogSeverity.Error), 'Failed to connect to log server:', err);
     });
     return new LogClient(channel, socket);
   }
