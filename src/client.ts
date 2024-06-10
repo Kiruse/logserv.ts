@@ -58,11 +58,16 @@ export class LogClient {
       socket = io({ port: DEFAULT_LOGSERVER_PORT, ...opts, auth: { channel, ...opts?.auth } });
     }
     socket.on('connect_error', (err) => {
-      if (err.message === 'timeout') {
-        console.error(getClientLogPrefix(LogSeverity.Error), 'Connection to log server timed out');
-        return;
+      switch (err.message) {
+        case 'timeout':
+          console.error(getClientLogPrefix(LogSeverity.Error), 'Connection to log server timed out');
+          return;
+        case 'xhr poll error':
+          console.error(getClientLogPrefix(LogSeverity.Error), 'Failed to connect to log server (XHR Poll Error)');
+          return;
+        default:
+          console.error(getClientLogPrefix(LogSeverity.Error), 'Failed to connect to log server:', err);
       }
-      console.error(getClientLogPrefix(LogSeverity.Error), 'Failed to connect to log server:', err);
     });
     return new LogClient(channel, socket);
   }
