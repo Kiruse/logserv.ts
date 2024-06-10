@@ -1,5 +1,6 @@
 import chalk from 'chalk';
 import { LogSeverity } from './types.js';
+import { sha256 } from '@noble/hashes/sha256';
 
 export const DEFAULT_LOGSERVER_PORT = 7031;
 
@@ -39,8 +40,11 @@ export function getServerLogPrefix(severity: LogSeverity, extra = '', timestamp 
 }
 
 function getClientColor(client: string) {
-  const hash = client.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return '#' + (hash % 0xFFFFFF).toString(16).padStart(6, '0');
+  const bytes = sha256(client);
+  const words = new Uint32Array(bytes.buffer);
+  const sum = words.reduce((acc, word) => acc + word, 0);
+  const rgb = sum % 0xFFFFFF;
+  return '#' + rgb.toString(16).padStart(6, '0');
 }
 
 export function getClientLogPrefix(severity: LogSeverity, extra = '', timestamp = new Date(), colorize = true) {
