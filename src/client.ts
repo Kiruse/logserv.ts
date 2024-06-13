@@ -5,26 +5,26 @@ import { DEFAULT_LOGSERVER_PORT, getClientLogPrefix, getServerLogPrefix } from '
 export type Socket = SocketBase<ServerEvents, ClientEvents>;
 
 export class LogClient {
-  #socket: Socket;
+  #socket: Socket | undefined;
   #channels = new Set<string>();
   #syncListeners: (() => void)[] = [];
 
-  constructor(public readonly channel: string, socket: Socket) {
+  constructor(public readonly channel: string, socket: Socket | undefined) {
     this.#socket = socket;
-    this.#socket.on('connect', this.#onConnect);
-    this.#socket.on('push', (channel, severity, timestamp, ...messages) => {
+    this.#socket?.on('connect', this.#onConnect);
+    this.#socket?.on('push', (channel, severity, timestamp, ...messages) => {
       console.log(getServerLogPrefix(severity, channel, new Date(timestamp)), ...messages);
     });
   }
 
   #onConnect = () => {
     this.#syncListeners.forEach(listener => listener());
-    this.#channels.forEach(ch => this.#socket.emit('sub', ch));
+    this.#channels.forEach(ch => this.#socket?.emit('sub', ch));
   }
 
   #log = (severity: LogSeverity, ...messages: any[]) => {
     console.log(getClientLogPrefix(severity), ...messages);
-    this.#socket.emit('log', severity, new Date().toISOString(), ...messages);
+    this.#socket?.emit('log', severity, new Date().toISOString(), ...messages);
   }
 
   trace = (...messages: any[]) => this.#log(LogSeverity.Trace, ...messages);
@@ -34,12 +34,14 @@ export class LogClient {
   error = (...messages: any[]) => this.#log(LogSeverity.Error, ...messages);
 
   listen(channel = '*') {
+    if (!this.#socket) throw Error('Cannot listen without a socket');
     if (this.#socket.connected)
       this.#socket.emit('sub', channel);
     this.#channels.add(channel);
   }
 
   sync() {
+    if (!this.#socket) throw Error('Cannot sync without a socket');
     if (this.#socket.connected) return Promise.resolve();
     return new Promise<void>(resolve => {
       this.#syncListeners.push(resolve);
